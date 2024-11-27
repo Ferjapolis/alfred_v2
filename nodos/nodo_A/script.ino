@@ -55,8 +55,8 @@ void loop() {
   // Enviar datos de sensores al servidor
   if (WiFi.status() == WL_CONNECTED) {
     HTTPClient http;
-    String serverPath = serverName + "/sensors";
-    String jsonPayload = "{\"temperature\":" + String(t) + ",\"humidity\":" + String(h) + ",\"pir0\":" + String(pirValues[0]) + ",\"pir1\":" + String(pirValues[1]) + ",\"pir2\":" + String(pirValues[2]) + "}";
+    String serverPath = serverName + "/sensores";
+    String jsonPayload = "{\"temperatura\":" + String(t) + ",\"humedad\":" + String(h) + ",\"pir0\":" + String(pirValues[0]) + ",\"pir1\":" + String(pirValues[1]) + ",\"pir2\":" + String(pirValues[2]) + "}";
 
     http.begin(serverPath.c_str());
     http.addHeader("Content-Type", "application/json");
