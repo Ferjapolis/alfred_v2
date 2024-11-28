@@ -21,7 +21,7 @@ Alfred v2 es un sistema domótico diseñado para automatizar y controlar disposi
 
 ## Arquitectura del Sistema
 El sistema Alfred v2 se compone de los siguientes elementos:
-![diagrama](/diagrama_de_arquitectura.png)
+![diagrama](/img/diagrama_de_arquitectura.png)
 - Comunicación entre los ESP8266 y el backend mediante MQTT o HTTP.
 - Base de datos MongoDB para registros y configuración.
 - Interfaz de usuario para lectura y control en tiempo real.
@@ -38,6 +38,7 @@ Raspberry Pi Zero 2 W: Hospeda el backend, la base de datos y la aplicación web
 3. **Frontend**
     - Astro & Vue.js: Aplicación frontend para interactuar con el usuario.
     - Node.js: Servidor para la aplicación web.
+
 
 ### Nodos
 Arduino Mini + ESP8266: Controla sensores y actuadores para interactuar con el entorno físico.

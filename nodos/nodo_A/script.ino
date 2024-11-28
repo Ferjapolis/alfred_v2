@@ -17,6 +17,7 @@ const int buttonPins[] = {10, 9, 8, 7}; // Pines donde están conectados los bot
 
 // Configuración del servidor
 const char* serverName = "http://IP_de_tu_Raspberry/api/endpoint";
+const char* nodeId = "N001"; // Identificador del nodo
 
 void setup() {
   Serial.begin(115200);
@@ -55,8 +56,8 @@ void loop() {
   // Enviar datos de sensores al servidor
   if (WiFi.status() == WL_CONNECTED) {
     HTTPClient http;
-    String serverPath = serverName + "/sensores";
-    String jsonPayload = "{\"temperatura\":" + String(t) + ",\"humedad\":" + String(h) + ",\"pir0\":" + String(pirValues[0]) + ",\"pir1\":" + String(pirValues[1]) + ",\"pir2\":" + String(pirValues[2]) + "}";
+    String serverPath = serverName + "/sensors";
+    String jsonPayload = "{\"nodo\":\"" + String(nodeId) + "\",\"temperature\":" + String(t) + ",\"humidity\":" + String(h) + "}";
 
     http.begin(serverPath.c_str());
     http.addHeader("Content-Type", "application/json");
@@ -76,8 +77,56 @@ void loop() {
   // Leer botones y operar relés
   for (int i = 0; i < 4; i++) {
     if (digitalRead(buttonPins[i]) == LOW) {
-      digitalWrite(relayPins[i], !digitalRead(relayPins[i]));
+      bool newState = !digitalRead(relayPins[i]);
+      digitalWrite(relayPins[i], newState);
+
+      // Enviar registro de cambio de estado del relé al servidor
+      if (WiFi.status() == WL_CONNECTED) {
+        HTTPClient http;
+        String serverPath = serverName + "/reles";
+        String jsonPayload = "{\"nodo\":\"" + String(nodeId) + "\",\"relay\":" + String(i) + ",\"state\":" + String(newState) + "}";
+
+        http.begin(serverPath.c_str());
+        http.addHeader("Content-Type", "application/json");
+        int httpResponseCode = http.POST(jsonPayload);
+
+        if (httpResponseCode > 0) {
+          String response = http.getString();
+          Serial.println(httpResponseCode);
+          Serial.println(response);
+        } else {
+          Serial.print("Error en la solicitud HTTP: ");
+          Serial.println(httpResponseCode);
+        }
+        http.end();
+      }
+
       delay(300); // Debounce
+    }
+  }
+
+  // Registrar activación de sensores PIR
+  for (int i = 0; i < 3; i++) {
+    if (pirValues[i]) {
+      if (WiFi.status() == WL_CONNECTED) {
+        HTTPClient http;
+        String serverPath = serverName + "/pir";
+        String jsonPayload = "{\"nodo\":\"" + String(nodeId) + "\",\"pir\":" + String(i) + ",\"state\":" + String(pirValues[i]) + "}";
+
+        http.begin(serverPath.c_str());
+        http.addHeader("Content-Type", "application/json");
+        int httpResponseCode = http.POST(jsonPayload);
+
+        if (httpResponseCode > 0) {
+          String response = http.getString();
+          Serial.println(httpResponseCode);
+          Serial.println(response);
+        } else {
+          Serial.print("Error en la solicitud HTTP: ");
+          Serial.println(httpResponseCode);
+        }
+        http.end();
+      }
     }
   }
 
