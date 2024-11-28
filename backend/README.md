@@ -61,6 +61,13 @@ Este proyecto es un backend desarrollado en Rust utilizando el framework Actix W
 | POST | `/pir` | Registra el estado de un sensor PIR. |
 | GET | `/{table}/{period}` | Consulta datos históricos filtrados por periodo. |
 
+### Diagrama de comunicaciones
+#### Backend a Frontend
+![conexion](/img/server-frontend.png)
+
+#### Backend a Nodos
+![conexion](/img/server-nodos.png)
+
 ### Ejemplo de Peticiones
 - Registrar datos de un sensor:   
     ```bash
@@ -80,7 +87,7 @@ Este proyecto es un backend desarrollado en Rust utilizando el framework Actix W
     ```bash
     curl -X GET http://localhost:8080/sensors/day
     ```
-    
+
 ### Cómo Ejecutar
 1. Asegúrate de tener una instancia de MongoDB en ejecución en localhost:27017.
 2. Compila y ejecuta el servidor:
