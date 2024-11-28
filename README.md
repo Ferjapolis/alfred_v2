@@ -1,54 +1,33 @@
 # Alfred v2 - Sistema Domótico
 
-### Descripción
-Alfred v2 es un sistema domótico diseñado para automatizar y controlar dispositivos dentro de una casa inteligente. Utiliza un ecosistema basado en hardware como Raspberry Pi Zero 2 W y placas Arduino con ESP8266, acompañado de un stack tecnológico moderno que incluye MongoDB, Rust, Astro y Vue.js.
+¡Bienvenido al repositorio de Alfred v2, tu solución integral para la gestión domótica de espacios inteligentes! Este proyecto combina hardware y software para ofrecer un sistema modular, eficiente y escalable que permite el monitoreo y control de dispositivos domésticos como sensores, relés y actuadores, todo a través de una interfaz web intuitiva.
 
+## ¿Qué es Alfred v2?
+### Alfred v2 es un ecosistema domótico basado en tecnologías modernas que consta de:
 
-## Tabla de Contenidos
-- Arquitectura del Sistema
-- Hardware
-    - Raspberry Pi Zero 2 W
-    - Arduino con ESP8266
-- Software
-    - Base de Datos
-    - Backend
-    - Frontend
-- Instalación
-- Uso
-- Estructura del Repositorio
-- Contribuciones
-- Licencia
+1. **Backend en Rust**: Una API robusta y eficiente que gestiona la comunicación entre los nodos y la base de datos.
+2. **Frontend en Astro y Vue.js**: Una interfaz web ligera que permite monitorear datos en tiempo real y controlar dispositivos desde cualquier navegador.
+3. **Nodos ESP8266**: Microcontroladores responsables de recolectar datos de sensores (PIR, DHT22) y operar relés, conectados vía Wi-Fi.
+4. **Base de Datos MongoDB**: Almacena de forma estructurada toda la información de sensores, eventos y estados de dispositivos.
 
-## Arquitectura del Sistema
-El sistema Alfred v2 se compone de los siguientes elementos:
-![diagrama](/img/diagrama_de_arquitectura.png)
-- Comunicación entre los ESP8266 y el backend mediante MQTT o HTTP.
-- Base de datos MongoDB para registros y configuración.
-- Interfaz de usuario para lectura y control en tiempo real.
+## Arquitectura General del Sistema
+A continuación, te mostramos cómo interactúan los componentes principales en Alfred v2:
+![arquitectura](/img/arquitectura.png)
 
-### Server
-Raspberry Pi Zero 2 W: Hospeda el backend, la base de datos y la aplicación web.
+### Características Destacadas
+- **Escalabilidad**: Fácil integración de más nodos ESP8266 para añadir sensores o dispositivos controlados.
+- **Interfaz Moderna**: La web app permite interactuar con el sistema de forma intuitiva desde cualquier dispositivo conectado.
+- **Almacenamiento Centralizado**: Los datos se almacenan en MongoDB, permitiendo consultas históricas y analíticas.
+- **Automatización Domótica**: Control inteligente de relés y dispositivos basado en datos de sensores.
 
-1. **Backend**
-    - Rust: Microservicio backend que gestiona la lógica del sistema y comunicación.
+### Captura del Sistema en Acción
+A continuación, se muestra un ejemplo de la comunicación entre un nodo ESP8266 y el servidor en Rust, acompañado del flujo de datos hacia la base de datos MongoDB:
 
-2. **Base de Datos**
-    - MongoDB: Base de datos para almacenar estados de sensores y registros históricos.
+![comunicacion](/img/comunicacion.png)
 
-3. **Frontend**
-    - Astro & Vue.js: Aplicación frontend para interactuar con el usuario.
-    - Node.js: Servidor para la aplicación web.
-
-
-### Nodos
-Arduino Mini + ESP8266: Controla sensores y actuadores para interactuar con el entorno físico.
-Tecnologías.
-
-1. **Input**:
-    - PIR (sensores de movimientos)
-    - DHT22 (sensor de humedad y temperatura)
-    - BMP280 (sensor de presion atmoferica)
-2. Output
-    - Rele
-    - Leds
-
+### ¿Cómo Empezar?
+1. Clona este repositorio:
+```bash
+git clone https://github.com/tu_usuario/alfred-v2.git
+```
+2. Sigue las instrucciones de instalación y configuración en la documentación completa.
