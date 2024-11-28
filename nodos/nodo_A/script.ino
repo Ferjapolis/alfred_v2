@@ -1,5 +1,5 @@
 #include <ESP8266WiFi.h>
-#include <ESP8266HTTPClient.h>
+#include <ESP8266WebServer.h>
 #include <DHT.h>
 
 // Configuración de Wi-Fi
@@ -18,6 +18,8 @@ const int buttonPins[] = {10, 9, 8, 7}; // Pines donde están conectados los bot
 // Configuración del servidor
 const char* serverName = "http://IP_de_tu_Raspberry/api/endpoint";
 const char* nodeId = "N001"; // Identificador del nodo
+
+ESP8266WebServer server(80); // Servidor HTTP en el puerto 80
 
 void setup() {
   Serial.begin(115200);
@@ -42,37 +44,16 @@ void setup() {
     Serial.println("Conectando...");
   }
   Serial.println("Conectado a Wi-Fi");
+
+  // Configurar rutas del servidor HTTP
+  server.on("/sensors", HTTP_GET, handleGetSensors);
+  server.begin();
+  Serial.println("Servidor HTTP iniciado");
 }
 
 void loop() {
-  // Leer sensores
-  float h = dht.readHumidity();
-  float t = dht.readTemperature();
-  bool pirValues[3];
-  for (int i = 0; i < 3; i++) {
-    pirValues[i] = digitalRead(pirPins[i]);
-  }
-
-  // Enviar datos de sensores al servidor
-  if (WiFi.status() == WL_CONNECTED) {
-    HTTPClient http;
-    String serverPath = serverName + "/sensors";
-    String jsonPayload = "{\"nodo\":\"" + String(nodeId) + "\",\"temperature\":" + String(t) + ",\"humidity\":" + String(h) + "}";
-
-    http.begin(serverPath.c_str());
-    http.addHeader("Content-Type", "application/json");
-    int httpResponseCode = http.POST(jsonPayload);
-
-    if (httpResponseCode > 0) {
-      String response = http.getString();
-      Serial.println(httpResponseCode);
-      Serial.println(response);
-    } else {
-      Serial.print("Error en la solicitud HTTP: ");
-      Serial.println(httpResponseCode);
-    }
-    http.end();
-  }
+  // Manejar solicitudes del servidor HTTP
+  server.handleClient();
 
   // Leer botones y operar relés
   for (int i = 0; i < 4; i++) {
@@ -107,11 +88,12 @@ void loop() {
 
   // Registrar activación de sensores PIR
   for (int i = 0; i < 3; i++) {
-    if (pirValues[i]) {
+    bool pirValue = digitalRead(pirPins[i]);
+    if (pirValue) {
       if (WiFi.status() == WL_CONNECTED) {
         HTTPClient http;
         String serverPath = serverName + "/pir";
-        String jsonPayload = "{\"nodo\":\"" + String(nodeId) + "\",\"pir\":" + String(i) + ",\"state\":" + String(pirValues[i]) + "}";
+        String jsonPayload = "{\"nodo\":\"" + String(nodeId) + "\",\"pir\":" + String(i) + ",\"state\":" + String(pirValue) + "}";
 
         http.begin(serverPath.c_str());
         http.addHeader("Content-Type", "application/json");
@@ -131,4 +113,20 @@ void loop() {
   }
 
   delay(2000);
+}
+
+void handleGetSensors() {
+  // Leer sensores
+  float h = dht.readHumidity();
+  float t = dht.readTemperature();
+  bool pirValues[3];
+  for (int i = 0; i < 3; i++) {
+    pirValues[i] = digitalRead(pirPins[i]);
+  }
+
+  // Crear respuesta JSON
+  String jsonResponse = "{\"nodo\":\"" + String(nodeId) + "\",\"temperature\":" + String(t) + ",\"humidity\":" + String(h)  + "}";
+
+  // Enviar respuesta JSON
+  server.send(200, "application/json", jsonResponse);
 }

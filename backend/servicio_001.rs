@@ -9,6 +9,9 @@ struct SensorData {
     nodo: String,
     temperature: f32,
     humidity: f32,
+    pir0: bool,
+    pir1: bool,
+    pir2: bool,
 }
 
 #[derive(Deserialize)]
@@ -30,6 +33,9 @@ struct SensorRecord {
     nodo: String,
     temperature: f32,
     humidity: f32,
+    pir0: bool,
+    pir1: bool,
+    pir2: bool,
     timestamp: NaiveDate,
 }
 
@@ -49,6 +55,13 @@ struct PirRecord {
     timestamp: NaiveDate,
 }
 
+#[derive(Serialize)]
+struct NodeMetadata {
+    nodo: String,
+    description: String,
+    location: String,
+}
+
 async fn save_sensor_data(data: web::Json<SensorData>) -> impl Responder {
     let client_options = ClientOptions::parse("mongodb://localhost:27017").await.unwrap();
     let client = Client::with_options(client_options).unwrap();
@@ -58,6 +71,9 @@ async fn save_sensor_data(data: web::Json<SensorData>) -> impl Responder {
         "nodo": &data.nodo,
         "temperature": data.temperature,
         "humidity": data.humidity,
+        "pir0": data.pir0,
+        "pir1": data.pir1,
+        "pir2": data.pir2,
         "timestamp": Utc::now(),
     };
 
@@ -97,7 +113,7 @@ async fn save_pir_data(data: web::Json<PirData>) -> impl Responder {
     "PIR state saved"
 }
 
-async fn get_data(collection: &str, table: web::Path<String>, period: web::Path<String>) -> impl Responder {
+async fn get_data(collection: &str, nodo: web::Path<String>, period: web::Path<String>) -> impl Responder {
     let client_options = ClientOptions::parse("mongodb://localhost:27017").await.unwrap();
     let client = Client::with_options(client_options).unwrap();
     let collection = client.database("domotica").collection(collection);
@@ -105,16 +121,19 @@ async fn get_data(collection: &str, table: web::Path<String>, period: web::Path<
     let now = Utc::now();
     let filter = match period.as_str() {
         "day" => doc! {
+            "nodo": &nodo,
             "timestamp": {
                 "$gte": now.date_naive()
             }
         },
         "week" => doc! {
+            "nodo": &nodo,
             "timestamp": {
                 "$gte": (now - chrono::Duration::weeks(1)).date_naive()
             }
         },
         "month" => doc! {
+            "nodo": &nodo,
             "timestamp": {
                 "$gte": (now - chrono::Duration::days(30)).date_naive()
             }
@@ -131,6 +150,9 @@ async fn get_data(collection: &str, table: web::Path<String>, period: web::Path<
                 nodo: result.get_str("nodo").unwrap().to_string(),
                 temperature: result.get_f64("temperature").unwrap() as f32,
                 humidity: result.get_f64("humidity").unwrap() as f32,
+                pir0: result.get_bool("pir0").unwrap(),
+                pir1: result.get_bool("pir1").unwrap(),
+                pir2: result.get_bool("pir2").unwrap(),
                 timestamp: result.get_date("timestamp").unwrap(),
             },
             "reles" => RelayRecord {
@@ -153,6 +175,26 @@ async fn get_data(collection: &str, table: web::Path<String>, period: web::Path<
     HttpResponse::Ok().json(results)
 }
 
+async fn get_node_metadata() -> impl Responder {
+    let client_options = ClientOptions::parse("mongodb://localhost:27017").await.unwrap();
+    let client = Client::with_options(client_options).unwrap();
+    let collection = client.database("domotica").collection("nodos");
+
+    let mut cursor = collection.find(None, None).await.unwrap();
+    let mut results = Vec::new();
+
+    while let Some(result) = cursor.try_next().await.unwrap() {
+        let metadata = NodeMetadata {
+            nodo: result.get_str("nodo").unwrap().to_string(),
+            description: result.get_str("description").unwrap().to_string(),
+            location: result.get_str("location").unwrap().to_string(),
+        };
+        results.push(metadata);
+    }
+
+    HttpResponse::Ok().json(results)
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     HttpServer::new(|| {
@@ -160,9 +202,10 @@ async fn main() -> std::io::Result<()> {
             .route("/sensors", web::post().to(save_sensor_data))
             .route("/reles", web::post().to(save_relay_data))
             .route("/pir", web::post().to(save_pir_data))
-            .route("/{table}/{period}", web::get().to(get_data))
-            .route("/{table}/{period}", web::get().to(get_data))
-            .route("/{table}/{period}", web::get().to(get_data))
+            .route("/sensors/{nodo}/{period}", web::get().to(get_data))
+            .route("/reles/{nodo}/{period}", web::get().to(get_data))
+            .route("/pir/{nodo}/{period}", web::get().to(get_data))
+            .route("/nodos", web::get().to(get_node_metadata))
     })
     .bind("0.0.0.0:8080")?
     .run()
