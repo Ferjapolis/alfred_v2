@@ -5,10 +5,10 @@
 ## ¿Qué es Alfred v2?
 ### Alfred v2 es un ecosistema domótico basado en tecnologías modernas que consta de:
 
-1. **Backend en Rust**: Una API robusta y eficiente que gestiona la comunicación entre los nodos y la base de datos.
-2. **Frontend en Astro y Vue.js**: Una interfaz web ligera que permite monitorear datos en tiempo real y controlar dispositivos desde cualquier navegador.
-3. **Nodos ESP8266**: Microcontroladores responsables de recolectar datos de sensores (PIR, DHT22) y operar relés, conectados vía Wi-Fi.
-4. **Base de Datos MongoDB**: Almacena de forma estructurada toda la información de sensores, eventos y estados de dispositivos.
+1. **[Backend en Rust](/backend/)**: Una API robusta y eficiente que gestiona la comunicación entre los nodos y la base de datos.
+2. **[Frontend en Astro y Vue.js](/frontend/)**: Una interfaz web ligera que permite monitorear datos en tiempo real y controlar dispositivos desde cualquier navegador.
+3. **[Nodos Arduino Mini + ESP8266](/nodos/)**: Microcontroladores responsables de recolectar datos de sensores (PIR, DHT22) y operar relés, conectados vía Wi-Fi.
+4. **[Base de Datos MongoDB](/database/)**: Almacena de forma estructurada toda la información de sensores, eventos y estados de dispositivos.
 
 ## Arquitectura General del Sistema
 A continuación, te mostramos cómo interactúan los componentes principales en Alfred v2:
