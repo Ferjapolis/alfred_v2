@@ -1,7 +1,7 @@
 use actix_web::{web, App, HttpServer, Responder, HttpResponse};
 use serde::{Deserialize, Serialize};
-use mongodb::{Client, options::ClientOptions, bson::doc};
-use chrono::{NaiveDate, Utc};
+use influxdb::Client;
+use chrono::{Utc, DateTime};
 use futures::stream::TryStreamExt;
 
 #[derive(Deserialize)]
@@ -36,7 +36,7 @@ struct SensorRecord {
     pir0: bool,
     pir1: bool,
     pir2: bool,
-    timestamp: NaiveDate,
+    timestamp: DateTime<Utc>,
 }
 
 #[derive(Serialize)]
@@ -44,7 +44,7 @@ struct RelayRecord {
     nodo: String,
     relay: u8,
     state: bool,
-    timestamp: NaiveDate,
+    timestamp: DateTime<Utc>,
 }
 
 #[derive(Serialize)]
@@ -52,7 +52,7 @@ struct PirRecord {
     nodo: String,
     pir: u8,
     state: bool,
-    timestamp: NaiveDate,
+    timestamp: DateTime<Utc>,
 }
 
 #[derive(Serialize)]
@@ -63,109 +63,72 @@ struct NodeMetadata {
 }
 
 async fn save_sensor_data(data: web::Json<SensorData>) -> impl Responder {
-    let client_options = ClientOptions::parse("mongodb://localhost:27017").await.unwrap();
-    let client = Client::with_options(client_options).unwrap();
-    let collection = client.database("domotica").collection("sensors");
-
-    let doc = doc! {
-        "nodo": &data.nodo,
-        "temperature": data.temperature,
-        "humidity": data.humidity,
-        "pir0": data.pir0,
-        "pir1": data.pir1,
-        "pir2": data.pir2,
-        "timestamp": Utc::now(),
-    };
-
-    collection.insert_one(doc, None).await.unwrap();
+    let client = Client::new("http://localhost:8086", "domotica");
+    let mut query = client.query("sensors");
+    query.add_tag("nodo", &data.nodo);
+    query.add_field("temperature", data.temperature as f64);
+    query.add_field("humidity", data.humidity as f64);
+    query.add_field("pir0", data.pir0 as i64);
+    query.add_field("pir1", data.pir1 as i64);
+    query.add_field("pir2", data.pir2 as i64);
+    query.write().await.unwrap();
     "Data saved"
 }
 
 async fn save_relay_data(data: web::Json<RelayData>) -> impl Responder {
-    let client_options = ClientOptions::parse("mongodb://localhost:27017").await.unwrap();
-    let client = Client::with_options(client_options).unwrap();
-    let collection = client.database("domotica").collection("reles");
-
-    let doc = doc! {
-        "nodo": &data.nodo,
-        "relay": data.relay,
-        "state": data.state,
-        "timestamp": Utc::now(),
-    };
-
-    collection.insert_one(doc, None).await.unwrap();
+    let client = Client::new("http://localhost:8086", "domotica");
+    let mut query = client.query("reles");
+    query.add_tag("nodo", &data.nodo);
+    query.add_field("relay", data.relay as i64);
+    query.add_field("state", data.state as i64);
+    query.write().await.unwrap();
     "Relay state saved"
 }
 
 async fn save_pir_data(data: web::Json<PirData>) -> impl Responder {
-    let client_options = ClientOptions::parse("mongodb://localhost:27017").await.unwrap();
-    let client = Client::with_options(client_options).unwrap();
-    let collection = client.database("domotica").collection("pir");
-
-    let doc = doc! {
-        "nodo": &data.nodo,
-        "pir": data.pir,
-        "state": data.state,
-        "timestamp": Utc::now(),
-    };
-
-    collection.insert_one(doc, None).await.unwrap();
+    let client = Client::new("http://localhost:8086", "domotica");
+    let mut query = client.query("pir");
+    query.add_tag("nodo", &data.nodo);
+    query.add_field("pir", data.pir as i64);
+    query.add_field("state", data.state as i64);
+    query.write().await.unwrap();
     "PIR state saved"
 }
 
-async fn get_data(collection: &str, nodo: web::Path<String>, period: web::Path<String>) -> impl Responder {
-    let client_options = ClientOptions::parse("mongodb://localhost:27017").await.unwrap();
-    let client = Client::with_options(client_options).unwrap();
-    let collection = client.database("domotica").collection(collection);
-
-    let now = Utc::now();
-    let filter = match period.as_str() {
-        "day" => doc! {
-            "nodo": &nodo,
-            "timestamp": {
-                "$gte": now.date_naive()
-            }
-        },
-        "week" => doc! {
-            "nodo": &nodo,
-            "timestamp": {
-                "$gte": (now - chrono::Duration::weeks(1)).date_naive()
-            }
-        },
-        "month" => doc! {
-            "nodo": &nodo,
-            "timestamp": {
-                "$gte": (now - chrono::Duration::days(30)).date_naive()
-            }
-        },
-        _ => doc! {},
+async fn get_data(measurement: &str, nodo: web::Path<String>, period: web::Path<String>) -> impl Responder {
+    let client = Client::new("http://localhost:8086", "domotica");
+    let query = match period.as_str() {
+        "day" => format!("SELECT * FROM {} WHERE nodo = '{}' AND time >= now() - 1d", measurement, nodo),
+        "week" => format!("SELECT * FROM {} WHERE nodo = '{}' AND time >= now() - 7d", measurement, nodo),
+        "month" => format!("SELECT * FROM {} WHERE nodo = '{}' AND time >= now() - 30d", measurement, nodo),
+        _ => format!("SELECT * FROM {} WHERE nodo = '{}'", measurement, nodo),
     };
 
-    let mut cursor = collection.find(filter, None).await.unwrap();
     let mut results = Vec::new();
+    let mut query_result = client.query(query).await.unwrap();
 
-    while let Some(result) = cursor.try_next().await.unwrap() {
-        let record = match collection.name() {
+    while let Some(result) = query_result.next().await {
+        let record = match measurement {
             "sensors" => SensorRecord {
-                nodo: result.get_str("nodo").unwrap().to_string(),
-                temperature: result.get_f64("temperature").unwrap() as f32,
-                humidity: result.get_f64("humidity").unwrap() as f32,
-                pir0: result.get_bool("pir0").unwrap(),
-                pir1: result.get_bool("pir1").unwrap(),
-                pir2: result.get_bool("pir2").unwrap(),
-                timestamp: result.get_date("timestamp").unwrap(),
+                nodo: result.get_tag("nodo").unwrap().to_string(),
+                temperature: result.get_field("temperature").unwrap() as f32,
+                humidity: result.get_field("humidity").unwrap() as f32,
+                pir0: result.get_field("pir0").unwrap() != 0,
+                pir1: result.get_field("pir1").unwrap() != 0,
+                pir2: result.get_field("pir2").unwrap() != 0,
+                timestamp: result.get_timestamp().unwrap(),
             },
             "reles" => RelayRecord {
-                nodo: result.get_str("nodo").unwrap().to_string(),
-                relay: result.get_u32("relay").unwrap() as u8,
-                state: result.get_bool("state").unwrap(),
-                timestamp: result.get_date("timestamp").unwrap(),
+                nodo: result.get_tag("nodo").unwrap().to_string(),
+                relay: result.get_field("relay").unwrap() as u8,
+                state: result.get_field("state").unwrap() != 0,
+                timestamp: result.get_timestamp().unwrap(),
             },
             "pir" => PirRecord {
-                nodo: result.get_str("nodo").unwrap().to_string(),
-                pir: result.get_u32("pir").unwrap() as u8,
-                state: result.get_bool("state").unwrap(),
-                timestamp: result.get_date("timestamp").unwrap(),
+                nodo: result.get_tag("nodo").unwrap().to_string(),
+                pir: result.get_field("pir").unwrap() as u8,
+                state: result.get_field("state").unwrap() != 0,
+                timestamp: result.get_timestamp().unwrap(),
             },
             _ => continue,
         };
@@ -176,18 +139,16 @@ async fn get_data(collection: &str, nodo: web::Path<String>, period: web::Path<S
 }
 
 async fn get_node_metadata() -> impl Responder {
-    let client_options = ClientOptions::parse("mongodb://localhost:27017").await.unwrap();
-    let client = Client::with_options(client_options).unwrap();
-    let collection = client.database("domotica").collection("nodos");
-
-    let mut cursor = collection.find(None, None).await.unwrap();
+    let client = Client::new("http://localhost:8086", "domotica");
+    let query = "SELECT * FROM nodos";
     let mut results = Vec::new();
+    let mut query_result = client.query(query).await.unwrap();
 
-    while let Some(result) = cursor.try_next().await.unwrap() {
+    while let Some(result) = query_result.next().await {
         let metadata = NodeMetadata {
-            nodo: result.get_str("nodo").unwrap().to_string(),
-            description: result.get_str("description").unwrap().to_string(),
-            location: result.get_str("location").unwrap().to_string(),
+            nodo: result.get_tag("nodo").unwrap().to_string(),
+            description: result.get_field("description").unwrap().to_string(),
+            location: result.get_field("location").unwrap().to_string(),
         };
         results.push(metadata);
     }
