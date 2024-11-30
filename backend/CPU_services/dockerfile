@@ -1,0 +1,35 @@
+# Usar una imagen base oficial de Rust
+FROM rust:latest AS builder
+
+# Establecer el directorio de trabajo
+WORKDIR /usr/src/app
+
+# Copiar el archivo Cargo.toml y Cargo.lock
+COPY Cargo.toml Cargo.lock ./
+
+# Descargar todas las dependencias
+RUN cargo build --release
+RUN rustup target add arm-unknown-linux-gnueabihf
+
+# Copiar el código fuente
+COPY . .
+
+# Compilar la aplicación en modo release
+RUN cargo build --release --target arm-unknown-linux-gnueabihf
+
+# Usar una imagen base mínima para la aplicación compilada
+FROM debian:buster-slim
+
+# Instalar dependencias necesarias para ejecutar la aplicación
+RUN apt-get update && apt-get install -y \
+    libc6-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copiar el ejecutable compilado desde la etapa de construcción
+COPY --from=builder /usr/src/app/target/arm-unknown-linux-gnueabihf/release/rpi_monitor /usr/local/bin/rpi_monitor
+
+# Exponer el puerto en el que la aplicación escuchará
+EXPOSE 8080
+
+# Comando para ejecutar la aplicación
+CMD ["rpi_monitor"]

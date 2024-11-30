@@ -1,0 +1,19 @@
+[package]
+name = "system-monitor"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "system-monitor"
+path = "src/main.rs"
+
+[dependencies]
+actix-web = "4.4"
+sysinfo = "0.32.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+local-ip-address = "0.6.3"
+thiserror = "2.0.3"
+log = "0.4"
+env_logger = "0.11.5"
+reqwest = "0.12.9"
