@@ -1,10 +1,12 @@
 [package]
-name = "system-monitor"
+name = "rpi_monitor"
 version = "0.1.0"
 edition = "2021"
+authors = ["Ferjapolis"]
+description = "API de datos de sistemas"
 
 [[bin]]
-name = "system-monitor"
+name = "rpi_monitor"
 path = "src/main.rs"
 
 [dependencies]
@@ -17,3 +19,6 @@ thiserror = "2.0.3"
 log = "0.4"
 env_logger = "0.11.5"
 reqwest = "0.12.9"
+bollard = "0.18.1"
+futures-util = "0.3"
+chrono = "0.4"
