@@ -1,5 +1,5 @@
 [package]
-name = "api_v1"
+name = "rpi_logs_nodos"
 version = "1.0.0"
 edition = "2021"
 authors = ["Ferjapolis"]
